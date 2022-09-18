@@ -1,7 +1,12 @@
-from Models.NeuralNetworks import GenreClassifier
+from Models.ConvNet import Model
+import json
 
-DATA_PATH = "data/genres.json"
+with open("config.json", "r") as fp:
+    config = json.load(fp)
+DATA_PATH = "data/genres.pickle"
 WEIGHTS_PATH = "weights/genres.h5"
 
-model = GenreClassifier(DATA_PATH, WEIGHTS_PATH, 0.25, 0.2)
-model.train(32, 30)
+model = Model(data_path=config["data_path"], weights_path=config["weights_path"],
+              test_size=config["test_size"], validation_size=config["validation_size"])
+model.create_model()
+model.train(batch_size=32, epochs=30)

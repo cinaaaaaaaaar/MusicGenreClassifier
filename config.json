@@ -1,0 +1,13 @@
+{
+  "dataset_path": "../../../Other/Datasets/genres/genres_original",
+  "data_path": "data/genres_model_1.pickle",
+  "weights_path": "weights/genres_model_1.h5",
+  "sample_duration": 30,
+  "sample_rate": 22050,
+  "num_segments": 10,
+  "n_mfcc": 13,
+  "n_fft": 2048,
+  "hop_length": 512,
+  "test_size": 0.25,
+  "validation_size": 0.2
+}
