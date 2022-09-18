@@ -1,12 +1,4 @@
-import os
-import pickle
-import librosa
-import math
-import warnings
-import sys
-import pickle
-import numpy as np
-import matplotlib.pyplot as plt
+import os, pickle, librosa, math, warnings, sys, pickle, numpy as np, matplotlib.pyplot as plt
 from rich.console import Console
 from random import randint
 from tensorflow.keras import Sequential
@@ -54,7 +46,8 @@ class Model:
         x_train = self.x_train
         model = Sequential()
         input_shape = (x_train.shape[1], x_train.shape[2], 1)
-        convolutional_layers = [[32, (3, 3), (3, 3), (2, 2)], [64, (3, 3), (3, 3), (2, 2)],
+        convolutional_layers = [[32, (3, 3), (3, 3), (2, 2)],
+                                [64, (3, 3), (3, 3), (2, 2)],
                                 [128, (2, 2), (3, 3), (2, 2)]]
         for i, layer in enumerate(convolutional_layers):
             if i == 0:
@@ -80,7 +73,8 @@ class Model:
         history = self.model.fit(self.x_train, self.y_train, validation_data=(
             self.x_validation, self.y_validation), batch_size=batch_size, epochs=epochs)
         self.model.save_weights(self.weights_path)
-        test_error, test_accuracy = self.model.evaluate(self.x_test, self.y_test, verbose=1)
+        test_error, test_accuracy = self.model.evaluate(
+            self.x_test, self.y_test, verbose=1)
         print(f"Accuracy on test set is {test_accuracy}")
         self.plot_history(history)
 
@@ -114,7 +108,8 @@ class Model:
             initial_sample = samples_per_segment * segment
             final_sample = initial_sample + samples_per_segment
             mfcc = (librosa.feature.mfcc(
-                y=signal[initial_sample:final_sample], sr=sample_rate, n_fft=n_fft, n_mfcc=n_mfcc, hop_length=hop_length)).T
+                y=signal[initial_sample:final_sample], sr=sample_rate,
+                n_fft=n_fft, n_mfcc=n_mfcc, hop_length=hop_length)).T
             if len(mfcc) == standard_vectors_per_segment:
                 mfcc = mfcc[np.newaxis, ...]
                 prediction = np.argmax(self.model.predict(mfcc), axis=1)[0]
@@ -124,7 +119,8 @@ class Model:
         print(f"Predicted genre: {genre}")
 
 
-def generate_mfccs(dataset_path, data_path, sample_rate, n_mfcc, n_fft, hop_length, num_segments, sample_duration):
+def generate_mfccs(dataset_path, data_path, sample_rate, n_mfcc, n_fft,
+                   hop_length, num_segments, sample_duration):
     data = {
         "genres": [],
         "inputs": [],
@@ -152,7 +148,8 @@ def generate_mfccs(dataset_path, data_path, sample_rate, n_mfcc, n_fft, hop_leng
                         initial_sample = samples_per_segment * segment
                         final_sample = initial_sample + samples_per_segment
                         mfcc = (librosa.feature.mfcc(
-                            y=signal[initial_sample:final_sample], sr=sample_rate, n_fft=n_fft, n_mfcc=n_mfcc, hop_length=hop_length)).T
+                            y=signal[initial_sample:final_sample], sr=sample_rate,
+                            n_fft=n_fft, n_mfcc=n_mfcc, hop_length=hop_length)).T
                         if len(mfcc) == standard_vectors_per_segment:
                             data["inputs"].append(mfcc.tolist())
                             data["targets"].append(i - 1)

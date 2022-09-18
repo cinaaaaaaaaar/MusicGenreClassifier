@@ -15,5 +15,6 @@ else:
     model = Model(data_path=config["data_path"], weights_path=config["weights_path"],
                   test_size=config["test_size"], validation_size=config["validation_size"])
     model.create_model()
-    model.predict(audio_path, sample_rate=config["sample_rate"], samples_per_segment=samples_per_segment,
-                  n_mfcc=config["n_mfcc"], n_fft=config["n_fft"], hop_length=config["hop_length"])
+    model.predict(audio_path, sample_rate=config["sample_rate"],
+                  samples_per_segment=samples_per_segment, n_mfcc=config["n_mfcc"],
+                  n_fft=config["n_fft"], hop_length=config["hop_length"])
