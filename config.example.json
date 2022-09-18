@@ -1,5 +1,5 @@
 {
-  "dataset_path": "../../../Other/Datasets/genres/genres_original",
+  "dataset_path": "PATH_TO_DATASET",
   "data_path": "data/genres_model_1.pickle",
   "weights_path": "weights/genres_model_1.h5",
   "sample_duration": 30,

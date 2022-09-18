@@ -1,4 +1,5 @@
 .DS_Store
+config.json
 *.h5
 __pycache__/
 *.py[cod]
