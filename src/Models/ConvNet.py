@@ -1,5 +1,4 @@
 import os, pickle, librosa, math, warnings, sys, pickle, numpy as np, matplotlib.pyplot as plt
-from rich.console import Console
 from random import randint
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Flatten, Dense, Dropout

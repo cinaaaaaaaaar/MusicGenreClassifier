@@ -2,7 +2,7 @@ import sys
 from Models.ConvNet import Model
 import json
 
-with open("config.json", "r") as fp:
+with open("../config.json", "r") as fp:
     config = json.load(fp)
 
 if len(sys.argv) < 2:

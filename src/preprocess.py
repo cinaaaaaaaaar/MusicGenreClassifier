@@ -1,6 +1,6 @@
 import json
 from Models.ConvNet import generate_mfccs
-with open("config.json", "r") as fp:
+with open("../config.json", "r") as fp:
     config = json.load(fp)
 
 DATASET = "../../../Other/Datasets/genres/genres_original"

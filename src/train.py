@@ -1,7 +1,7 @@
 from Models.ConvNet import Model
 import json
 
-with open("config.json", "r") as fp:
+with open("../config.json", "r") as fp:
     config = json.load(fp)
 DATA_PATH = "data/genres.pickle"
 WEIGHTS_PATH = "weights/genres.h5"
