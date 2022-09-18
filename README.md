@@ -1,5 +1,5 @@
 # Stats
 
-When the audio files from the [GTZAN Dataset](https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification) were divided into 10 segments, the final accuracy was %80. The training took about 2 minutes to finish.
+I've divided the audio files from the [GTZAN Dataset](https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification) into 10 segments and then fed them to the network. The final accuracy was %80 and the training took about 2 minutes to finish. The model overfitted in my first tries, but after some hyperparameter tweaking I've partially solved overfitting.
 
 ![Accuracy and Loss Plots](https://raw.githubusercontent.com/ozlucinar/genre_classifier/main/images/accuracy_loss_plot.png)
