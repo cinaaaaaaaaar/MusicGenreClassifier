@@ -59,8 +59,8 @@ class Model:
             model.add(BatchNormalization())
 
         model.add(Flatten())
-        model.add(Dense(128, activation='relu', kernel_regularizer=L2(1e-1)))
-        model.add(Dropout(0.7))
+        model.add(Dense(128, activation='relu', kernel_regularizer=L2(0.5)))
+        model.add(Dropout(0.8))
         model.add(Dense(len(self.genres), activation='softmax'))
         optimizer = Adam(learning_rate=1e-4)
         model.compile(optimizer=optimizer,

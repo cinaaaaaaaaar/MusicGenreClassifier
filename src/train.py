@@ -9,4 +9,4 @@ WEIGHTS_PATH = "weights/genres.h5"
 model = Model(data_path=config["data_path"], weights_path=config["weights_path"],
               test_size=config["test_size"], validation_size=config["validation_size"])
 model.create_model()
-model.train(batch_size=32, epochs=30)
+model.train(batch_size=32, epochs=50)
