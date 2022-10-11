@@ -115,7 +115,7 @@ class Model:
                 predictions.append(prediction)
         prediction_index = max(set(predictions), key=predictions.count)
         genre = self.genres[prediction_index]
-        print(f"Predicted genre: {genre}")
+        return genre
 
 
 def generate_mfccs(dataset_path, data_path, sample_rate, n_mfcc, n_fft,

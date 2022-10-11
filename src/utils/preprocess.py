@@ -1,9 +1,9 @@
 import json
 from Models.ConvNet import generate_mfccs
-with open("../config.json", "r") as fp:
+with open("/Users/kisisel/Desktop/Kodlama/Python/Machine Learning/genre_classification_tf/config.json", "r") as fp:
     config = json.load(fp)
 
-DATASET = "../../../Other/Datasets/genres/genres_original"
+DATASET = "../../../../Other/Datasets/genres/genres_original"
 DATA_PATH = "data/genres.pickle"
 SAMPLE_DURATION = 30
 

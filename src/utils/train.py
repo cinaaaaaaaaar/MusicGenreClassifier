@@ -1,7 +1,7 @@
 from Models.ConvNet import Model
 import json
 
-with open("../config.json", "r") as fp:
+with open("/Users/kisisel/Desktop/Kodlama/Python/Machine Learning/genre_classification_tf/config.json", "r") as fp:
     config = json.load(fp)
 DATA_PATH = "data/genres.pickle"
 WEIGHTS_PATH = "weights/genres.h5"
