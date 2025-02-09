@@ -1,0 +1,5 @@
+librosa
+tensorflow
+matplotlib
+scikit-learn
+customtkinter

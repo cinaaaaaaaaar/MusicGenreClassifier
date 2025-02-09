@@ -1,9 +1,13 @@
 import sys
-from Models.ConvNet import Model
+from ..Models.ConvNet import Model
 import json
+import os
 
-with open("/Users/kisisel/Desktop/Kodlama/Python/Machine Learning/genre_classification_tf/config.json", "r") as fp:
-    config = json.load(fp)
+config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+with open(os.path.join(config_dir, "config.json"), "r") as f:
+    config = json.load(f)
 
 
 def predict(audio_path):
@@ -11,11 +15,21 @@ def predict(audio_path):
         return
     else:
         samples_per_segment = int(
-            (config["sample_rate"] * config["sample_duration"]) / config["num_segments"])
+            (config["sample_rate"] * config["sample_duration"]) / config["num_segments"]
+        )
 
-        model = Model(data_path=config["data_path"], weights_path=config["weights_path"],
-                      test_size=config["test_size"], validation_size=config["validation_size"])
+        model = Model(
+            data_path=config["data_path"],
+            weights_path=config["weights_path"],
+            test_size=config["test_size"],
+            validation_size=config["validation_size"],
+        )
         model.create_model()
-        return model.predict(audio_path, sample_rate=config["sample_rate"],
-                             samples_per_segment=samples_per_segment, n_mfcc=config["n_mfcc"],
-                             n_fft=config["n_fft"], hop_length=config["hop_length"])
+        return model.predict(
+            audio_path,
+            sample_rate=config["sample_rate"],
+            samples_per_segment=samples_per_segment,
+            n_mfcc=config["n_mfcc"],
+            n_fft=config["n_fft"],
+            hop_length=config["hop_length"],
+        )

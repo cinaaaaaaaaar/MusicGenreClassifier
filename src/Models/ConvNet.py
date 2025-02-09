@@ -1,13 +1,25 @@
 import os, pickle, librosa, math, warnings, sys, pickle, numpy as np, matplotlib.pyplot as plt
+import logging
+
 from random import randint
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Flatten, Dense, Dropout
+from tensorflow.keras.layers import (
+    Conv2D,
+    MaxPooling2D,
+    BatchNormalization,
+    Flatten,
+    Dense,
+    Dropout,
+)
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import L2
 from sklearn.model_selection import train_test_split
 
-warnings.filterwarnings('ignore')
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+warnings.filterwarnings("ignore")
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 class Model:
@@ -28,9 +40,11 @@ class Model:
 
     def train_test_validation_split(self, test_size, validation_size):
         x_train, x_test, y_train, y_test = train_test_split(
-            self.inputs, self.targets, test_size=test_size)
+            self.inputs, self.targets, test_size=test_size
+        )
         x_train, x_validation, y_train, y_validation = train_test_split(
-            x_train, y_train, test_size=validation_size)
+            x_train, y_train, test_size=validation_size
+        )
         x_train = x_train[..., np.newaxis]
         x_validation = x_validation[..., np.newaxis]
         x_test = x_test[..., np.newaxis]
@@ -45,35 +59,48 @@ class Model:
         x_train = self.x_train
         model = Sequential()
         input_shape = (x_train.shape[1], x_train.shape[2], 1)
-        convolutional_layers = [[32, (3, 3), (3, 3), (2, 2)],
-                                [64, (3, 3), (3, 3), (2, 2)],
-                                [128, (2, 2), (3, 3), (2, 2)]]
+        convolutional_layers = [
+            [32, (3, 3), (3, 3), (2, 2)],
+            [64, (3, 3), (3, 3), (2, 2)],
+            [128, (2, 2), (3, 3), (2, 2)],
+        ]
         for i, layer in enumerate(convolutional_layers):
             if i == 0:
-                model.add(Conv2D(
-                    layer[0], layer[1], activation="relu", input_shape=input_shape))
+                model.add(
+                    Conv2D(
+                        layer[0], layer[1], activation="relu", input_shape=input_shape
+                    )
+                )
             else:
                 model.add(Conv2D(layer[0], layer[1], activation="relu"))
 
-            model.add(MaxPooling2D(layer[2], strides=layer[3], padding='same'))
+            model.add(MaxPooling2D(layer[2], strides=layer[3], padding="same"))
             model.add(BatchNormalization())
 
         model.add(Flatten())
-        model.add(Dense(128, activation='relu', kernel_regularizer=L2(0.5)))
+        model.add(Dense(128, activation="relu", kernel_regularizer=L2(0.5)))
         model.add(Dropout(0.8))
-        model.add(Dense(len(self.genres), activation='softmax'))
+        model.add(Dense(len(self.genres), activation="softmax"))
         optimizer = Adam(learning_rate=1e-4)
-        model.compile(optimizer=optimizer,
-                      loss='sparse_categorical_crossentropy',
-                      metrics=['accuracy'])
+        model.compile(
+            optimizer=optimizer,
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"],
+        )
         self.model = model
 
     def train(self, batch_size, epochs):
-        history = self.model.fit(self.x_train, self.y_train, validation_data=(
-            self.x_validation, self.y_validation), batch_size=batch_size, epochs=epochs)
+        history = self.model.fit(
+            self.x_train,
+            self.y_train,
+            validation_data=(self.x_validation, self.y_validation),
+            batch_size=batch_size,
+            epochs=epochs,
+        )
         self.model.save_weights(self.weights_path)
         test_error, test_accuracy = self.model.evaluate(
-            self.x_test, self.y_test, verbose=1)
+            self.x_test, self.y_test, verbose=1
+        )
         print(f"Accuracy on test set is {test_accuracy}")
         self.plot_history(history)
 
@@ -96,35 +123,79 @@ class Model:
 
         plt.show()
 
-    def predict(self, audio_path, sample_rate, n_mfcc, n_fft, hop_length, samples_per_segment):
+    def predict(
+        self,
+        audio_path,
+        sample_rate,
+        n_mfcc,
+        n_fft,
+        hop_length,
+        samples_per_segment,
+        overlap=0.5,
+    ):
+
         self.model.load_weights(self.weights_path)
         signal, sr = librosa.load(audio_path, sr=sample_rate)
-        sample_duration = len(signal) / sr
+
+        step_size = int(samples_per_segment * (1 - overlap))
         standard_vectors_per_segment = self.x_train.shape[1]
-        num_segments = int((sample_duration * sample_rate) / samples_per_segment)
-        predictions = []
+        num_segments = max(1, int((len(signal) - samples_per_segment) / step_size) + 1)
+        genre_scores = np.zeros(len(self.genres))
+
+        logging.info(f"Processing file: {audio_path}")
+
         for segment in range(num_segments):
-            initial_sample = samples_per_segment * segment
+            initial_sample = step_size * segment
             final_sample = initial_sample + samples_per_segment
-            mfcc = (librosa.feature.mfcc(
-                y=signal[initial_sample:final_sample], sr=sample_rate,
-                n_fft=n_fft, n_mfcc=n_mfcc, hop_length=hop_length)).T
+
+            if final_sample > len(
+                signal
+            ):  # Ensure segment does not exceed signal length
+                break
+
+            mfcc = librosa.feature.mfcc(
+                y=signal[initial_sample:final_sample],
+                sr=sample_rate,
+                n_fft=n_fft,
+                n_mfcc=n_mfcc,
+                hop_length=hop_length,
+            ).T
+
             if len(mfcc) == standard_vectors_per_segment:
                 mfcc = mfcc[np.newaxis, ...]
-                prediction = np.argmax(self.model.predict(mfcc), axis=1)[0]
-                predictions.append(prediction)
-        prediction_index = max(set(predictions), key=predictions.count)
-        genre = self.genres[prediction_index]
-        return genre
+                predictions = self.model.predict(mfcc)  # Get softmax probabilities
+                genre_scores += predictions[0]  # Sum confidence scores across segments
+
+                # Get the most confident genre for this segment
+                segment_prediction_index = np.argmax(predictions[0])
+                segment_genre = self.genres[segment_prediction_index]
+                confidence_score = predictions[0][segment_prediction_index]
+
+                # Log only confidence score and predicted genre
+                logging.info(
+                    f"Segment {segment+1}: {segment_genre} (Confidence: {confidence_score:.4f})"
+                )
+
+        # Determine genre with the highest confidence score
+        predicted_index = np.argmax(genre_scores)
+        predicted_genre = self.genres[predicted_index]
+
+        logging.info(f"Final Prediction: {predicted_genre}")
+
+        return predicted_genre
 
 
-def generate_mfccs(dataset_path, data_path, sample_rate, n_mfcc, n_fft,
-                   hop_length, num_segments, sample_duration):
-    data = {
-        "genres": [],
-        "inputs": [],
-        "targets": []
-    }
+def generate_mfccs(
+    dataset_path,
+    data_path,
+    sample_rate,
+    n_mfcc,
+    n_fft,
+    hop_length,
+    num_segments,
+    sample_duration,
+):
+    data = {"genres": [], "inputs": [], "targets": []}
     samples_per_segment = int((sample_rate * sample_duration) / num_segments)
     standard_vectors_per_segment = math.ceil(samples_per_segment / hop_length)
     for i, (dirpath, dirnames, filenames) in enumerate(os.walk(dataset_path)):
@@ -134,8 +205,8 @@ def generate_mfccs(dataset_path, data_path, sample_rate, n_mfcc, n_fft,
             data["genres"].append(label)
             if i > 1:
                 prev_label = data["genres"][i - 2]
-                sys.stdout.write('\x1b[1A')
-                sys.stdout.write('\x1b[2K')
+                sys.stdout.write("\x1b[1A")
+                sys.stdout.write("\x1b[2K")
                 print(f"Processed {prev_label} ")
             print(f"Processing {label}...")
 
@@ -146,9 +217,15 @@ def generate_mfccs(dataset_path, data_path, sample_rate, n_mfcc, n_fft,
                     for segment in range(num_segments):
                         initial_sample = samples_per_segment * segment
                         final_sample = initial_sample + samples_per_segment
-                        mfcc = (librosa.feature.mfcc(
-                            y=signal[initial_sample:final_sample], sr=sample_rate,
-                            n_fft=n_fft, n_mfcc=n_mfcc, hop_length=hop_length)).T
+                        mfcc = (
+                            librosa.feature.mfcc(
+                                y=signal[initial_sample:final_sample],
+                                sr=sample_rate,
+                                n_fft=n_fft,
+                                n_mfcc=n_mfcc,
+                                hop_length=hop_length,
+                            )
+                        ).T
                         if len(mfcc) == standard_vectors_per_segment:
                             data["inputs"].append(mfcc.tolist())
                             data["targets"].append(i - 1)
