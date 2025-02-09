@@ -1,4 +1,4 @@
-import os, pickle, librosa, math, warnings, sys, pickle, numpy as np, matplotlib.pyplot as plt
+import os, pickle, librosa, queue, math, warnings, sys, pickle, numpy as np, matplotlib.pyplot as plt
 import logging
 
 from random import randint
@@ -13,6 +13,7 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import L2
+from tensorflow.keras.callbacks import Callback
 from sklearn.model_selection import train_test_split
 
 warnings.filterwarnings("ignore")
@@ -20,6 +21,17 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+class EpochProgressCallback(Callback):
+    def __init__(self, epoch_queue, total_epochs):
+        super().__init__()
+        self.epoch_queue = epoch_queue
+        self.total_epochs = total_epochs
+
+    def on_epoch_end(self, epoch, logs=None):
+        # Put the current epoch progress into the queue
+        self.epoch_queue.put(f"{epoch+1}/{self.total_epochs}")
 
 
 class Model:
@@ -89,14 +101,23 @@ class Model:
         )
         self.model = model
 
-    def train(self, batch_size, epochs):
+    def train(self, batch_size, epochs, epoch_queue):
+        total_epochs = epochs
+
+        # Create the callback instance with the queue and total epochs
+        epoch_callback = EpochProgressCallback(epoch_queue, total_epochs)
+
+        # Start the training with the callback
         history = self.model.fit(
             self.x_train,
             self.y_train,
             validation_data=(self.x_validation, self.y_validation),
             batch_size=batch_size,
             epochs=epochs,
+            callbacks=[epoch_callback],  # Add the callback to the training process
         )
+
+        # After training is finished, save weights and evaluate the model
         self.model.save_weights(self.weights_path)
         test_error, test_accuracy = self.model.evaluate(
             self.x_test, self.y_test, verbose=1
@@ -105,6 +126,11 @@ class Model:
         self.plot_history(history)
 
     def plot_history(self, history):
+        """Schedules the plot to be shown on the main thread."""
+        self.after(0, self._show_plot, history)
+
+    def _show_plot(self, history):
+        """Displays the plot on the main thread."""
         fig, axs = plt.subplots(2)
 
         axs[0].plot(history.history["accuracy"], label="train accuracy")
@@ -121,7 +147,7 @@ class Model:
         axs[1].legend(loc="upper right")
         axs[1].set_title("Error Eval")
 
-        plt.show()
+        plt.show()  # Now this runs on the main thread
 
     def predict(
         self,
@@ -132,6 +158,7 @@ class Model:
         hop_length,
         samples_per_segment,
         overlap=0.5,
+        segment_queue=None,
     ):
 
         self.model.load_weights(self.weights_path)
@@ -171,10 +198,11 @@ class Model:
                 segment_genre = self.genres[segment_prediction_index]
                 confidence_score = predictions[0][segment_prediction_index]
 
-                # Log only confidence score and predicted genre
-                logging.info(
-                    f"Segment {segment+1}: {segment_genre} (Confidence: {confidence_score:.4f})"
-                )
+                segment_log = f"Segment {segment+1}: {segment_genre.capitalize()}, Confidence: {confidence_score*100:.2f}%"
+                logging.info(segment_log)
+
+                if segment_queue:
+                    segment_queue.put(segment_log)
 
         # Determine genre with the highest confidence score
         predicted_index = np.argmax(genre_scores)
@@ -194,6 +222,7 @@ def generate_mfccs(
     hop_length,
     num_segments,
     sample_duration,
+    label_queue=None,
 ):
     data = {"genres": [], "inputs": [], "targets": []}
     samples_per_segment = int((sample_rate * sample_duration) / num_segments)
@@ -203,6 +232,10 @@ def generate_mfccs(
             folders = os.path.split(dirpath)
             label = folders[-1]
             data["genres"].append(label)
+
+            if label_queue:
+                label_queue.put(f"{label}")
+
             if i > 1:
                 prev_label = data["genres"][i - 2]
                 sys.stdout.write("\x1b[1A")
@@ -229,5 +262,7 @@ def generate_mfccs(
                         if len(mfcc) == standard_vectors_per_segment:
                             data["inputs"].append(mfcc.tolist())
                             data["targets"].append(i - 1)
+    if label_queue:
+        label_queue.put("complete.")
     with open(data_path, "wb") as fp:
         pickle.dump(data, fp)

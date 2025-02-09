@@ -10,7 +10,7 @@ with open(os.path.join(config_dir, "config.json"), "r") as f:
     config = json.load(f)
 
 
-def predict(audio_path):
+def predict(audio_path, segment_queue=None):
     if len(audio_path) < 1:
         return
     else:
@@ -32,4 +32,5 @@ def predict(audio_path):
             n_mfcc=config["n_mfcc"],
             n_fft=config["n_fft"],
             hop_length=config["hop_length"],
+            segment_queue=segment_queue,
         )

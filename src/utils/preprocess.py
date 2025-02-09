@@ -1,6 +1,6 @@
 import json
 from ..Models.ConvNet import generate_mfccs
-import os
+import os, queue
 
 config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -12,7 +12,7 @@ DATA_PATH = "data/genres.pickle"
 SAMPLE_DURATION = 30
 
 
-if __name__ == "__main__":
+def preprocess_data(label_queue=None):
     generate_mfccs(
         dataset_path=config["dataset_path"],
         data_path=config["data_path"],
@@ -22,4 +22,9 @@ if __name__ == "__main__":
         sample_rate=config["sample_rate"],
         n_mfcc=config["n_mfcc"],
         hop_length=config["hop_length"],
+        label_queue=label_queue,
     )
+
+
+if __name__ == "__main__":
+    preprocess_data()
