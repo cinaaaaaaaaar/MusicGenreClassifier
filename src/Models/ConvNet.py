@@ -198,7 +198,7 @@ class Model:
                 segment_genre = self.genres[segment_prediction_index]
                 confidence_score = predictions[0][segment_prediction_index]
 
-                segment_log = f"Segment {segment+1}: {segment_genre.capitalize()}, Confidence: {confidence_score*100:.2f}%"
+                segment_log = f"{segment+1}: {segment_genre.capitalize()}, Confidence: {confidence_score*100:.2f}%"
                 logging.info(segment_log)
 
                 if segment_queue:

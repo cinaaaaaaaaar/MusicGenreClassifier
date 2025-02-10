@@ -8,7 +8,6 @@ import os
 import queue
 import time
 
-# Suppress macOS debug logs
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 os.environ["TK_SILENCE_DEPRECATION"] = "1"
 
@@ -18,17 +17,17 @@ class MusicGenreClassifierApp(ctk.CTk):
         super().__init__()
         self.title("Music Genre Classifier")
         self.geometry("500x320")
-        self.configure(bg="#1C1C1E")
+        self.configure(bg="#1E1E1E")
         self._center_window()
         self._init_ui()
         self.after(200, self.focus_force)
 
-        # Shared state variables
         self.process_active = False
         self.start_time = None
+        self.animations = {}
+        self.preprocessing_complete = False
 
     def _center_window(self):
-        """Centers the window on the screen."""
         self.update_idletasks()
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -37,22 +36,18 @@ class MusicGenreClassifierApp(ctk.CTk):
         self.geometry(f"+{x}+{y}")
 
     def _init_ui(self):
-        """Initializes the UI components."""
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
-        main_frame.pack(expand=True, fill="both")  # Ensure it takes full space
+        main_frame.pack(expand=True, fill="both")
 
         content_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        content_frame.place(relx=0.5, rely=0.5, anchor="center")  # Center the content
+        content_frame.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Title
         ctk.CTkLabel(
             content_frame,
             text="Music Genre Classifier",
             font=("SF Pro Display", 24, "bold"),
             text_color="white",
         ).pack(pady=(0, 15))
-
-        # Status label
         self.status_label = ctk.CTkLabel(
             content_frame,
             text="Select an Audio File or Train",
@@ -62,7 +57,6 @@ class MusicGenreClassifierApp(ctk.CTk):
         )
         self.status_label.pack(pady=5)
 
-        # Dynamic label (for segments, epochs, accuracy)
         self.dynamic_label = ctk.CTkLabel(
             content_frame,
             text="",
@@ -71,25 +65,20 @@ class MusicGenreClassifierApp(ctk.CTk):
         )
         self.dynamic_label.pack(pady=2)
 
-        # Elapsed time label (remains visible after training)
         self.elapsed_label = ctk.CTkLabel(
             content_frame, text="", font=("SF Pro Display", 16), text_color="#8E8E93"
         )
         self.elapsed_label.pack(pady=2)
 
-        # Progress bar
         self.progress_bar = ctk.CTkProgressBar(
             content_frame,
-            orientation="horizontal",
             mode="indeterminate",
             height=4,
-            progress_color="#0A84FF",
-            fg_color="#2C2C2E",
-            corner_radius=2,
+            progress_color="#66C2FF",
+            fg_color="#2A2A2A",
         )
         self.progress_bar.pack(fill="x", pady=15)
 
-        # Buttons
         button_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         button_frame.pack(fill="x", pady=(10, 0))
 
@@ -98,12 +87,9 @@ class MusicGenreClassifierApp(ctk.CTk):
             "corner_radius": 8,
             "height": 36,
             "width": 120,
-            "border_width": 0,
-            "fg_color": "#363638",
+            "fg_color": "#5A5A5A",
             "hover_color": "#48484A",
-            "text_color": "white",
         }
-
         ctk.CTkButton(
             button_frame,
             text="Choose File",
@@ -118,41 +104,37 @@ class MusicGenreClassifierApp(ctk.CTk):
         ).pack(side="left", padx=4, expand=True)
 
     def _start_process(self, label_text, keep_progress_blue=True):
-        """Starts a process with a progress bar and timer."""
         self.process_active = True
         self.start_time = time.time()
         self.status_label.configure(text=label_text)
-        self.progress_bar.configure(
-            progress_color="#0A84FF" if keep_progress_blue else "#30D158"
-        )
         self.progress_bar.start()
         self._update_elapsed_time()
 
     def _end_process(self, final_text):
-        """Ends a process and updates UI elements."""
         self.process_active = False
         self.progress_bar.stop()
+
+        for label_prefix in list(self.animations.keys()):
+            self._stop_animation(label_prefix)
+
         self.status_label.configure(text=final_text)
+        self.dynamic_label.configure(text="Select an Audio File")
 
     def _update_elapsed_time(self):
-        """Updates elapsed time during a process."""
         if self.process_active and self.start_time:
             elapsed_time = time.time() - self.start_time
             minutes, seconds = divmod(int(elapsed_time), 60)
-            self.elapsed_label.configure(
-                text=f"Elapsed: {minutes:02}:{seconds:02}", text_color="#8E8E93"
+            label = (
+                f"Elapsed: {minutes:02}:{seconds:02}"
+                if not self.preprocessing_complete
+                else f"Training Elapsed: {minutes:02}:{seconds:02}"
             )
+            self.elapsed_label.configure(text=label, text_color="#8E8E93")
             self.after(1000, self._update_elapsed_time)
 
     def _select_file_and_predict(self):
-        """Handles file selection and starts prediction."""
         filepath = filedialog.askopenfilename(
-            title="Open an Audio File",
-            filetypes=[
-                ("MP3 Files", "*.mp3"),
-                ("WAV Files", "*.wav"),
-                ("All Files", "*.*"),
-            ],
+            filetypes=[("Audio Files", "*.mp3 *.wav"), ("All Files", "*.*")],
             initialdir="~/Downloads",
         )
         if filepath:
@@ -164,13 +146,12 @@ class MusicGenreClassifierApp(ctk.CTk):
             self.after(100, self._process_queue, segment_queue, "Segment")
 
     def _predict_genre(self, filepath, segment_queue):
-        """Runs prediction and updates the queue."""
         result = predict(filepath, segment_queue=segment_queue).capitalize()
         self.after(0, self._animate_result, result)
 
     def _train(self):
-        """Handles training initiation."""
         self._start_process("Training...")
+        self.preprocessing_complete = False
         label_queue = queue.Queue()
         epoch_queue = queue.Queue()
         accuracy_queue = queue.Queue()
@@ -184,37 +165,71 @@ class MusicGenreClassifierApp(ctk.CTk):
         self.after(100, self._process_queue, accuracy_queue, "Test Accuracy")
 
     def _train_model(self, label_queue, epoch_queue, accuracy_queue):
-        """Runs the training process and gets model accuracy."""
         try:
             preprocess_data(label_queue=label_queue)
-            accuracy = train(epoch_queue=epoch_queue)  # Returns test accuracy
+            self.preprocessing_complete = True
+            self.start_time = time.time()
+
+            accuracy = train(epoch_queue=epoch_queue)
             accuracy_queue.put(f"{accuracy:.2f}%")
         except Exception as e:
             self.after(0, lambda: self.status_label.configure(text=f"Error: {e}"))
         finally:
-            self.after(0, lambda: self._end_process("Training complete."))
+            self.after(0, lambda: self._end_process("Training complete!"))
 
     def _process_queue(self, queue_obj, label_prefix):
-        """Processes a queue and updates the UI dynamically."""
         if self.process_active:
             try:
                 while not queue_obj.empty():
                     update_text = queue_obj.get_nowait()
-                    self.dynamic_label.configure(text=f"{label_prefix}: {update_text}")
+                    if label_prefix == "Preprocessing":
+                        if "complete" in update_text.lower():
+                            self.preprocessing_complete = True
+                            self._stop_animation(label_prefix)
+                            self.dynamic_label.configure(
+                                text=f"{label_prefix} {update_text}"
+                            )
+                        else:
+                            self._start_animation(label_prefix, update_text)
+                    elif label_prefix == "Epoch" and self.preprocessing_complete:
+                        self._start_animation(label_prefix, update_text)
+                    elif label_prefix == "Test Accuracy":
+                        self.dynamic_label.configure(
+                            text=f"{label_prefix} {update_text}"
+                        )
             except queue.Empty:
                 pass
             self.after(100, self._process_queue, queue_obj, label_prefix)
 
+    def _start_animation(self, label_prefix, base_text):
+        self._stop_animation(label_prefix)
+        self.animations[label_prefix] = {"base": base_text, "dots": 0, "after_id": None}
+        self._animate_dots(label_prefix)
+
+    def _stop_animation(self, label_prefix):
+        if label_prefix in self.animations:
+            anim = self.animations[label_prefix]
+            if anim["after_id"]:
+                self.after_cancel(anim["after_id"])
+            del self.animations[label_prefix]
+
+    def _animate_dots(self, label_prefix):
+        if label_prefix not in self.animations:
+            return
+        anim = self.animations[label_prefix]
+        anim["dots"] = (anim["dots"] % 3) + 1
+        dots = "." * anim["dots"]
+        self.dynamic_label.configure(text=f"{label_prefix} {anim['base']}{dots}")
+        anim["after_id"] = self.after(500, self._animate_dots, label_prefix)
+
     def _animate_result(self, result):
-        """Handles the final result display."""
         self._end_process("")
         self._typewriter_effect(result, 0)
 
     def _typewriter_effect(self, text, index):
-        """Displays text with a typewriter effect."""
         if index < len(text):
             current_text = self.status_label.cget("text") + text[index]
-            self.status_label.configure(text=current_text, text_color="#30D158")
+            self.status_label.configure(text=current_text)
             self.after(50, self._typewriter_effect, text, index + 1)
         else:
             self.status_label.configure(text_color="white")
